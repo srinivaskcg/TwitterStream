@@ -1,2 +1,2 @@
 # TwitterStream
-Read me for Twitter stream analysis using EvnetStore
+Read me for Twitter stream analysis using EventStore 
