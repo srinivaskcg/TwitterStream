@@ -2,44 +2,23 @@ import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.twitter.hbc.ClientBuilder;
 import com.twitter.hbc.core.Constants;
 import com.twitter.hbc.core.endpoint.Location;
 import com.twitter.hbc.core.endpoint.StatusesFilterEndpoint;
-import com.twitter.hbc.core.event.*;
 import com.twitter.hbc.core.processor.StringDelimitedProcessor;
 import com.twitter.hbc.httpclient.BasicClient;
 import com.twitter.hbc.httpclient.auth.Authentication;
 import com.twitter.hbc.httpclient.auth.OAuth1;
-import com.twitter.joauth.UrlCodec;
 import eventstore.*;
-import eventstore.Event;
 import eventstore.j.EventDataBuilder;
 import eventstore.j.SettingsBuilder;
 import eventstore.j.WriteEventsBuilder;
 import eventstore.proto.EventStoreMessages;
 import eventstore.tcp.ConnectionActor;
-import io.searchbox.client.JestClient;
-import io.searchbox.client.JestClientFactory;
-import io.searchbox.client.JestResult;
-import io.searchbox.client.config.HttpClientConfig;
-import io.searchbox.core.Index;
-import io.searchbox.indices.CreateIndex;
-import io.searchbox.indices.IndicesExists;
-import javafx.scene.NodeBuilder;
-import org.elasticsearch.client.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
-
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,19 +32,19 @@ public class SampleStream {
 
     public void run(String consumerKey, String consumerSecret, String token, String secret) throws InterruptedException, IOException {
 
-        BlockingQueue<String> queue = new LinkedBlockingQueue<String>(100);
+        BlockingQueue<String> queue = new LinkedBlockingQueue<String>(1000);
         //BlockingQueue<com.twitter.hbc.core.event.Event> queue1 = new LinkedBlockingQueue<com.twitter.hbc.core.event.Event>(100);
 
         StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
         //endpoint.trackTerms(Lists.newArrayList("#WednesdayWisdom"));
-        endpoint.locations(Lists.newArrayList(
-                new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
+//        endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
+        endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-121.113,27.817), new Location.Coordinate(-63.544,46.843))));
 
         Authentication auth = new OAuth1(consumerKey, consumerSecret, token, secret);
         //Authentication auth = new com.twitter.hbc.httpclient.auth.BasicAuth(username, password);
 
         BasicClient client = new ClientBuilder()
-                .name("sampleExampleClient")
+                .name("python-twitter-test-adb-grp6")
                 .hosts(Constants.STREAM_HOST)
                 .endpoint(endpoint)
                 .authentication(auth)
@@ -76,13 +55,16 @@ public class SampleStream {
 
         // Event Store
 
-        /*for (int msgRead = 0; msgRead < 1000; msgRead++) {
-            String msg = queue.take();
-            System.out.println(msg);
-        }*/
-
-       final Settings settings = new SettingsBuilder().address(new InetSocketAddress("127.0.0.1", 1113))
-                .defaultCredentials("admin", "changeit").build();
+//        for (int msgRead = 0; msgRead < 10; msgRead++) {
+//            String msg = queue.take();
+//            System.out.println(msg);
+//        }
+        System.out.println("msgQueue length" + queue.size());
+       
+       final Settings settings = new SettingsBuilder().address(
+    		   new InetSocketAddress("127.0.0.1", 1113))
+                .defaultCredentials("admin", "changeit")
+                .build();
 
         final ActorSystem system = ActorSystem.create();
         final ActorRef connection = system.actorOf(ConnectionActor.getProps(settings));
@@ -91,22 +73,24 @@ public class SampleStream {
         //Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
         List<EventData> events =  new ArrayList<EventData>();
-
-       /* while (!client.isDone()) {
-            for (int msgRead = 0; msgRead < 10; msgRead++) {
-                String msg = queue.poll();
-                slf4jLogger.info("Tweet" + msgRead);
-                //slf4jLogger.info(msg);
-
-                events.add(new EventDataBuilder("sample-event"+msg).eventId(UUID.randomUUID()).data(msg).build());
+        int count = 0 ; 
+        while (!client.isDone() && count < 30) {
+            for (int msgRead = 0; msgRead < 10 ; msgRead++) {
+                String msg = queue.take();
+                count ++;
+                slf4jLogger.info("Tweet" + msgRead + " --> "+msg);
+                events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
                 //events.add(new EventDataBuilder("sample-event").data(msg).build());
             }
-
-            final WriteEvents writeEvents = new WriteEventsBuilder("TweetStream12").addEvents(events).expectAnyVersion().build();
+//            System.out.println("msg's read 10");
+//            for(EventData e : events){
+//            	System.out.println(e);
+//            }
+            final WriteEvents writeEvents = new WriteEventsBuilder("TweetStream1").addEvents(events).expectAnyVersion().build();
 
             connection.tell(writeEvents, writeResult);
             events.clear();
-        }*/
+        }
 
        /* // Redis
         JedisPool pool = new JedisPool(new JedisPoolConfig(), "localhost", 6379, 90);
@@ -122,6 +106,7 @@ public class SampleStream {
         }*/
 
         //ElasticSearch
+        /*
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
         JestClientFactory factory = new JestClientFactory();
@@ -152,7 +137,7 @@ public class SampleStream {
 
         jestClient.shutdownClient();
         //client.stop();
-
+		*/
         System.out.printf("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
     }
 
