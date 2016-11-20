@@ -36,14 +36,20 @@ public class SampleStream {
         //BlockingQueue<com.twitter.hbc.core.event.Event> queue1 = new LinkedBlockingQueue<com.twitter.hbc.core.event.Event>(100);
 
         StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
+	// end point for filter    
         //endpoint.trackTerms(Lists.newArrayList("#WednesdayWisdom"));
-//        endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
+	// end point for sanfrancisco
+     	//endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
         endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-121.113,27.817), new Location.Coordinate(-63.544,46.843))));
 
         Authentication auth = new OAuth1(consumerKey, consumerSecret, token, secret);
+	// Authentication using username and password
         //Authentication auth = new com.twitter.hbc.httpclient.auth.BasicAuth(username, password);
 
         BasicClient client = new ClientBuilder()
+		//Srinivas's App
+		//.name("sampleExampleClient")
+		//Satya's App
                 .name("python-twitter-test-adb-grp6")
                 .hosts(Constants.STREAM_HOST)
                 .endpoint(endpoint)
@@ -53,12 +59,6 @@ public class SampleStream {
 
         client.connect();
 
-        // Event Store
-
-//        for (int msgRead = 0; msgRead < 10; msgRead++) {
-//            String msg = queue.take();
-//            System.out.println(msg);
-//        }
         System.out.println("msgQueue length" + queue.size());
        
        final Settings settings = new SettingsBuilder().address(
@@ -70,8 +70,6 @@ public class SampleStream {
         final ActorRef connection = system.actorOf(ConnectionActor.getProps(settings));
         final ActorRef writeResult = system.actorOf(Props.create(WriteResult.class));
 
-        //Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
         List<EventData> events =  new ArrayList<EventData>();
         int count = 0 ; 
         while (!client.isDone() && count < 30) {
@@ -82,62 +80,14 @@ public class SampleStream {
                 events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
                 //events.add(new EventDataBuilder("sample-event").data(msg).build());
             }
-//            System.out.println("msg's read 10");
-//            for(EventData e : events){
-//            	System.out.println(e);
-//            }
+		
             final WriteEvents writeEvents = new WriteEventsBuilder("TweetStream1").addEvents(events).expectAnyVersion().build();
 
             connection.tell(writeEvents, writeResult);
             events.clear();
         }
+	client.stop();
 
-       /* // Redis
-        JedisPool pool = new JedisPool(new JedisPoolConfig(), "localhost", 6379, 90);
-        Jedis jedis = pool.getResource();
-
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-        for (int msgRead = 0; msgRead < 10; msgRead++) {
-            String msg = queue.take();
-            JsonObject o = gson.fromJson(msg, JsonElement.class).getAsJsonObject();
-            jedis.set(o.get("id").getAsInt()+"",o.toString());
-            //System.out.println("Tweet with Id " + o.get("id").getAsInt() + " inserted");
-        }*/
-
-        //ElasticSearch
-        /*
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-        JestClientFactory factory = new JestClientFactory();
-
-        factory.setHttpClientConfig(new HttpClientConfig
-                .Builder("http://localhost:9200")
-                .multiThreaded(true)
-                .build());
-        JestClient jestClient = factory.getObject();
-
-        System.out.println("Jest Created");
-
-        CreateIndex createIndex = new CreateIndex.Builder("tweeting").build();
-        jestClient.execute(createIndex);
-
-        System.out.println("Index Created");
-
-        for (int msgRead = 0; msgRead < 10; msgRead++) {
-            String msg = queue.take();
-            JsonObject json = gson.fromJson(msg, JsonElement.class).getAsJsonObject();
-
-            System.out.println(json);
-
-            Index index = new Index.Builder(json).index("tweeting").type("tweet").build();
-            jestClient.execute(index);
-            System.out.println("Created");
-        }
-
-        jestClient.shutdownClient();
-        //client.stop();
-		*/
         System.out.printf("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
     }
 
