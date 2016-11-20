@@ -33,7 +33,6 @@ public class NLP {
                     mainSentiment = sentiment;
                     longest = partText.length();
                 }
-
             }
         }
         return mainSentiment;
