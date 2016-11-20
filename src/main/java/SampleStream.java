@@ -72,7 +72,11 @@ public class SampleStream {
 
         final ActorSystem system = ActorSystem.create();
         final ActorRef connection = system.actorOf(ConnectionActor.getProps(settings));
+<<<<<<< HEAD
         ActorRef writeResult = system.actorOf(Props.create(WriteResult.class));
+=======
+        final ActorRef writeResult = system.actorOf(Props.create(WriteResult.class));
+>>>>>>> c7199adc5c3f9fa4c13995feec3a7643d94dcc20
 
         List<EventData> events =  new ArrayList<EventData>();
         int count = 0 ;
@@ -85,6 +89,7 @@ public class SampleStream {
                 String msg = queue.take();
                 count ++;
                 slf4jLogger.info("Tweet" + msgRead + " --> " + msg);
+<<<<<<< HEAD
 
                 JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
                 String sentimentText = jsonObject.get("text").toString();
@@ -104,11 +109,33 @@ public class SampleStream {
             	writeResult = system.actorOf(Props.create(WriteResult.class));
             }
             
+=======
+
+                JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
+                String sentimentText = jsonObject.get("text").toString();
+
+//                0 - very Negative
+//                1 - Negative
+//                2 - neutral
+//                3 - positive
+//                4 - veryPositive
+
+                slf4jLogger.info("Tweet" + msgRead + " --> " + NLP.findSentiment(sentimentText));
+
+                events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
+            }
+
+            final WriteEvents writeEvents = new WriteEventsBuilder("TweetStream3").addEvents(events).expectAnyVersion().build();
+
+>>>>>>> c7199adc5c3f9fa4c13995feec3a7643d94dcc20
             connection.tell(writeEvents, writeResult);
             events.clear();
         }
         client.stop();
+<<<<<<< HEAD
         system.terminate();
+=======
+>>>>>>> c7199adc5c3f9fa4c13995feec3a7643d94dcc20
 
         slf4jLogger.info("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
     }
