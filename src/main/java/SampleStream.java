@@ -2,6 +2,9 @@ import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.twitter.hbc.ClientBuilder;
 import com.twitter.hbc.core.Constants;
 import com.twitter.hbc.core.endpoint.Location;
@@ -36,21 +39,21 @@ public class SampleStream {
         //BlockingQueue<com.twitter.hbc.core.event.Event> queue1 = new LinkedBlockingQueue<com.twitter.hbc.core.event.Event>(100);
 
         StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
-	// end point for filter    
+        // end point for filter
         //endpoint.trackTerms(Lists.newArrayList("#WednesdayWisdom"));
-	// end point for sanfrancisco
-     	//endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
+        // end point for sanfrancisco
+        //endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
         endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-121.113,27.817), new Location.Coordinate(-63.544,46.843))));
 
         Authentication auth = new OAuth1(consumerKey, consumerSecret, token, secret);
-	// Authentication using username and password
+        // Authentication using username and password
         //Authentication auth = new com.twitter.hbc.httpclient.auth.BasicAuth(username, password);
 
         BasicClient client = new ClientBuilder()
-		//Srinivas's App
-		//.name("sampleExampleClient")
-		//Satya's App
-                .name("python-twitter-test-adb-grp6")
+                //Srinivas's App
+                .name("sampleExampleClient")
+                //Satya's App
+                //.name("python-twitter-test-adb-grp6")
                 .hosts(Constants.STREAM_HOST)
                 .endpoint(endpoint)
                 .authentication(auth)
@@ -60,9 +63,9 @@ public class SampleStream {
         client.connect();
 
         System.out.println("msgQueue length" + queue.size());
-       
-       final Settings settings = new SettingsBuilder().address(
-    		   new InetSocketAddress("127.0.0.1", 1113))
+
+        final Settings settings = new SettingsBuilder().address(
+                new InetSocketAddress("127.0.0.1", 1113))
                 .defaultCredentials("admin", "changeit")
                 .build();
 
@@ -71,22 +74,38 @@ public class SampleStream {
         final ActorRef writeResult = system.actorOf(Props.create(WriteResult.class));
 
         List<EventData> events =  new ArrayList<EventData>();
-        int count = 0 ; 
-        while (!client.isDone() && count < 30) {
+        int count = 0 ;
+
+        NLP.init();
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        while (!client.isDone() && count < 1000) {
             for (int msgRead = 0; msgRead < 10 ; msgRead++) {
                 String msg = queue.take();
                 count ++;
-                slf4jLogger.info("Tweet" + msgRead + " --> "+msg);
+                slf4jLogger.info("Tweet" + msgRead + " --> " + msg);
+
+                JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
+                String sentimentText = jsonObject.get("text").toString();
+
+//                0 - very Negative
+//                1 - Negative
+//                2 - neutral
+//                3 - positive
+//                4 - veryPositive
+
+                System.out.println("Tweet" + msgRead + " --> " + NLP.findSentiment(sentimentText));
+
                 events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
                 //events.add(new EventDataBuilder("sample-event").data(msg).build());
             }
-		
-            final WriteEvents writeEvents = new WriteEventsBuilder("TweetStream1").addEvents(events).expectAnyVersion().build();
+
+            final WriteEvents writeEvents = new WriteEventsBuilder("TweetStream3").addEvents(events).expectAnyVersion().build();
 
             connection.tell(writeEvents, writeResult);
             events.clear();
         }
-	client.stop();
+        client.stop();
 
         System.out.printf("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
     }
