@@ -2,6 +2,9 @@ import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.twitter.hbc.ClientBuilder;
 import com.twitter.hbc.core.Constants;
 import com.twitter.hbc.core.endpoint.Location;
@@ -19,9 +22,11 @@ import eventstore.tcp.ConnectionActor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -33,24 +38,22 @@ public class SampleStream {
     public void run(String consumerKey, String consumerSecret, String token, String secret) throws InterruptedException, IOException {
 
         BlockingQueue<String> queue = new LinkedBlockingQueue<String>(1000);
-        //BlockingQueue<com.twitter.hbc.core.event.Event> queue1 = new LinkedBlockingQueue<com.twitter.hbc.core.event.Event>(100);
 
         StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
-	// end point for filter    
+        // end point for filter
         //endpoint.trackTerms(Lists.newArrayList("#WednesdayWisdom"));
-	// end point for sanfrancisco
-     	//endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
+        //endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
         endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-121.113,27.817), new Location.Coordinate(-63.544,46.843))));
 
         Authentication auth = new OAuth1(consumerKey, consumerSecret, token, secret);
-	// Authentication using username and password
+        // Authentication using username and password
         //Authentication auth = new com.twitter.hbc.httpclient.auth.BasicAuth(username, password);
 
         BasicClient client = new ClientBuilder()
-		//Srinivas's App
-		//.name("sampleExampleClient")
-		//Satya's App
-                .name("python-twitter-test-adb-grp6")
+                //Srinivas's App
+                .name("sampleExampleClient")
+                //Satya's App
+                //.name("python-twitter-test-adb-grp6")
                 .hosts(Constants.STREAM_HOST)
                 .endpoint(endpoint)
                 .authentication(auth)
@@ -59,36 +62,55 @@ public class SampleStream {
 
         client.connect();
 
-        System.out.println("msgQueue length" + queue.size());
-       
-       final Settings settings = new SettingsBuilder().address(
-    		   new InetSocketAddress("127.0.0.1", 1113))
+        slf4jLogger.info("msgQueue length" + queue.size());
+
+        final Settings settings = new SettingsBuilder().address(
+                new InetSocketAddress("127.0.0.1", 1113))
                 .defaultCredentials("admin", "changeit")
                 .build();
 
         final ActorSystem system = ActorSystem.create();
         final ActorRef connection = system.actorOf(ConnectionActor.getProps(settings));
-        final ActorRef writeResult = system.actorOf(Props.create(WriteResult.class));
+        ActorRef writeResult = system.actorOf(Props.create(WriteResult.class));
+
 
         List<EventData> events =  new ArrayList<EventData>();
-        int count = 0 ; 
-        while (!client.isDone() && count < 30) {
+        int count = 0 ;
+
+        NLP.init();
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        while (!client.isDone() && count < 1000) {
             for (int msgRead = 0; msgRead < 10 ; msgRead++) {
                 String msg = queue.take();
                 count ++;
-                slf4jLogger.info("Tweet" + msgRead + " --> "+msg);
-                events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
-                //events.add(new EventDataBuilder("sample-event").data(msg).build());
-            }
-		
-            final WriteEvents writeEvents = new WriteEventsBuilder("TweetStream1").addEvents(events).expectAnyVersion().build();
+                slf4jLogger.info("Tweet" + msgRead + " --> " + msg);
 
+                JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
+                String sentimentText = jsonObject.get("text").toString();
+
+//                0 - very Negative
+//                1 - Negative
+//                2 - neutral
+//                3 - positive
+//                4 - veryPositive
+
+                slf4jLogger.info("Tweet" + msgRead + " --> " + NLP.findSentiment(sentimentText));
+
+                events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
+            }
+            WriteEvents writeEvents = new WriteEventsBuilder("TweetStream11").addEvents(events).expectAnyVersion().build();
+            if(writeResult.isTerminated()){
+            	writeResult = system.actorOf(Props.create(WriteResult.class));
+            }
+            
             connection.tell(writeEvents, writeResult);
             events.clear();
         }
-	client.stop();
+        client.stop();
+        system.terminate();
 
-        System.out.printf("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
+        slf4jLogger.info("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
     }
 
     public static class WriteResult extends UntypedActor {
@@ -105,15 +127,26 @@ public class SampleStream {
                 log.error(exception, exception.toString());
             } else
                 unhandled(message);
-
-            context().system().terminate();
         }
     }
 
     public static void main(String[] args) {
         try {
             SampleStream sampleStream = new SampleStream();
-            sampleStream.run(args[0], args[1], args[2], args[3]);
+
+            Properties prop = new Properties();
+            InputStream input = null;
+            String filename = "twitter.properties";
+
+            input = SampleStream.class.getClassLoader().getResourceAsStream(filename);
+            if(input == null){
+                System.out.println("unable to find " + filename);
+                return;
+            }
+            prop.load(input);
+
+            sampleStream.run(prop.getProperty("oauth.consumerKey"), prop.getProperty("oauth.consumerSecret"), prop.getProperty("oauth.accessToken"), prop.getProperty("oauth.accessTokenSecret"));
+
         } catch (InterruptedException e) {
             System.out.println(e);
         }

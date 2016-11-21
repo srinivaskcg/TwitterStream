@@ -1,4 +1,6 @@
-target/**
+JavaTwitterStreamExample.iml
+target/
+node_modules/
 .idea/
 .settings/*
 .classpath
