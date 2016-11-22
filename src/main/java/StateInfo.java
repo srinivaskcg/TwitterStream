@@ -34,6 +34,11 @@ public class StateInfo {
 	public void addTweet(int stateTweet) {
 		this.tweets += stateTweet;
 	}
+
+	public int getTweets() {
+		// TODO Auto-generated method stub
+		return this.tweets;
+	}
 	
 	
 }
