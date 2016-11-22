@@ -80,14 +80,14 @@ public class SampleStream {
         NLP.init();
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-        while (!client.isDone() && count < 1000) {
+        while (!client.isDone() && count < 50) {
             for (int msgRead = 0; msgRead < 10 ; msgRead++) {
                 String msg = queue.take();
                 count ++;
                 slf4jLogger.info("Tweet" + msgRead + " --> " + msg);
 
                 JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
-                String sentimentText = jsonObject.get("text").toString();
+              //  String sentimentText = jsonObject.get("text").toString();
 
 //                0 - very Negative
 //                1 - Negative
@@ -95,7 +95,7 @@ public class SampleStream {
 //                3 - positive
 //                4 - veryPositive
 
-                slf4jLogger.info("Tweet" + msgRead + " --> " + NLP.findSentiment(sentimentText));
+             //   slf4jLogger.info("Tweet" + msgRead + " --> " + NLP.findSentiment(sentimentText));
 
                 events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
             }

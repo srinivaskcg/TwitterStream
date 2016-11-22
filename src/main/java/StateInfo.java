@@ -5,12 +5,14 @@ import java.util.Map;
 public class StateInfo {
 	private String name;
 	private String abbrv;
-	Map<String, Integer> hashtags;
+	private int tweets;
+	private Map<String, Integer> hashtags;
 	
 	StateInfo(String name, String abbrv){
 		hashtags = new HashMap<String, Integer>();
 		this.name = name;
 		this.abbrv = abbrv;
+		this.tweets = 0;
 	}
 	
 	String getAbrv(){
@@ -28,4 +30,15 @@ public class StateInfo {
 			this.hashtags.put(hashtag, count);
 		}
 	}
+
+	public void addTweet(int stateTweet) {
+		this.tweets += stateTweet;
+	}
+
+	public int getTweets() {
+		// TODO Auto-generated method stub
+		return this.tweets;
+	}
+	
+	
 }
