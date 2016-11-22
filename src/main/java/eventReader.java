@@ -22,7 +22,7 @@ public class eventReader {
 		for(final StateInfo state : statesInfo){
 			connection.subscribeToStream(state.getAbrv(), new SubscriptionObserver<Event>() {
 				public void onLiveProcessingStart(Closeable subscription) {
-					//system.log().info("live processing started");					
+					system.log().info("live processing started");
 				}
 
 				public void onError(Throwable e) {
@@ -35,13 +35,14 @@ public class eventReader {
 
 				public void onEvent(Event event, Closeable arg1) {
 					int stateTweet = 0;
+
 					if(event.data().eventType().contains("events_by_state")){
 						String data = event.data().data().value().decodeString("US-ASCII");
 						String hashtagData = data.substring(data.indexOf("hashtags") + 11, data.length() - 2);
 						String hashtags[] = hashtagData.split(",");
 						tweetCount++;
 						stateTweet++;
-
+						
 						for(String hashtagInfo : hashtags){
 							String hashtag = hashtagInfo.split(":")[0];
 							Integer count = Integer.parseInt(hashtagInfo.split(":")[1]);
