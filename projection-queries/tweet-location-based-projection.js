@@ -26,6 +26,7 @@ fromStream("TweetStream11").when({
                     pojo = {};
                     pojo["city"] = city;
                     pojo["hashtags"] = hashtags;
+                    pojo["lang"] = e.body["lang"];
                     emit(city_state.state,"events_by_state", pojo);
                 }
                 s.count++;
