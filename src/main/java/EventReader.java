@@ -3,8 +3,7 @@ import eventstore.Event;
 import eventstore.SubscriptionObserver;
 import eventstore.j.EsConnection;
 import eventstore.j.EsConnectionFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.jcabi.log.Logger;
 
 import java.io.Closeable;
 import java.util.HashMap;
@@ -12,9 +11,7 @@ import java.util.Map;
 
 public class EventReader {
 
-    private static final Logger logger = LoggerFactory.getLogger(EventReader.class);
-
-	private static Map<String, Integer> hashtagCount;
+    private static Map<String, Integer> hashtagCount;
 	private static int tweetCount;
 
 	public static void main(String args[]){
@@ -27,15 +24,15 @@ public class EventReader {
 		for(final StateInfo state : statesInfo){
 			connection.subscribeToStream(state.getAbrv(), new SubscriptionObserver<Event>() {
 				public void onLiveProcessingStart(Closeable subscription) {
-					logger.info("live processing started");
+					Logger.info(this,"live processing started");
 				}
 
 				public void onError(Throwable e) {
-					logger.error(e.toString());
+					Logger.error(this, e.toString());
 				}
 
 				public void onClose() {
-					logger.error("subscription closed");
+					Logger.error(this, "subscription closed");
 				}
 
 				public void onEvent(Event event, Closeable arg1) {
@@ -57,13 +54,13 @@ public class EventReader {
 								hashtagCount.put(hashtag, count);
 							}
 							state.addHashtag(hashtag, count);
-                            logger.info(state.getAbrv() + " " + hashtag + " " + state.getStateHash().get(hashtag));
-							logger.info( hashtag + " " + hashtagCount.get(hashtag));
+                            Logger.info(this, state.getAbrv() + " " + hashtag + " " + state.getStateHash().get(hashtag));
+							Logger.info(this,  hashtag + " " + hashtagCount.get(hashtag));
 						}	
-						logger.info("tweet count " + tweetCount);
+						Logger.info(this,"tweet count " + tweetCount);
 					}	
-					state.addTweet(stateTweet);	
-					logger.info("tweet count for state : " + state.getAbrv() + " - " + state.getTweets());
+					state.addTweet(stateTweet);
+					Logger.info(this, "tweet count for state : " + state.getAbrv() + " - " + state.getTweets());
 				}											
 			}, false, null);
 		}

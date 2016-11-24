@@ -2,9 +2,6 @@ import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import com.twitter.hbc.ClientBuilder;
 import com.twitter.hbc.core.Constants;
 import com.twitter.hbc.core.endpoint.Location;
@@ -19,8 +16,7 @@ import eventstore.j.SettingsBuilder;
 import eventstore.j.WriteEventsBuilder;
 import eventstore.proto.EventStoreMessages;
 import eventstore.tcp.ConnectionActor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.jcabi.log.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,8 +29,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class SampleStream {
-
-    private static final Logger logger = LoggerFactory.getLogger(SampleStream.class);
 
     public void run(String consumerKey, String consumerSecret, String token, String secret) throws InterruptedException, IOException {
 
@@ -59,7 +53,7 @@ public class SampleStream {
 
         client.connect();
 
-        logger.info("msgQueue length" + queue.size());
+        Logger.info(this, "msgQueue length" + queue.size());
 
         final Settings settings = new SettingsBuilder().address(
                 new InetSocketAddress("127.0.0.1", 1113))
@@ -81,7 +75,7 @@ public class SampleStream {
             for (int msgRead = 0; msgRead < 10; msgRead++) {
                 String msg = queue.take();
                 count++;
-                logger.info("Tweet" + msgRead + " --> " + msg);
+                Logger.info(this,"Tweet" + msgRead + " --> " + msg);
 
                 //JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
                 //  String sentimentText = jsonObject.get("text").toString();
@@ -107,7 +101,7 @@ public class SampleStream {
         client.stop();
         system.terminate();
 
-        logger.info("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
+        Logger.info(this, "The client read %d messages!\n", client.getStatsTracker().getNumMessages());
     }
 
     public static class WriteResult extends UntypedActor {
@@ -130,6 +124,7 @@ public class SampleStream {
     public static void main(String[] args) {
         try {
             SampleStream sampleStream = new SampleStream();
+            final long start = System.nanoTime();
 
             Properties prop = new Properties();
             InputStream input = null;
@@ -137,7 +132,7 @@ public class SampleStream {
 
             input = SampleStream.class.getClassLoader().getResourceAsStream(filename);
             if (input == null) {
-                logger.info("unable to find " + filename);
+                Logger.info(SampleStream.class, "unable to find " + filename, System.nanoTime() - start);
                 return;
             }
             prop.load(input);
@@ -145,9 +140,9 @@ public class SampleStream {
             sampleStream.run(prop.getProperty("oauth.consumerKey"), prop.getProperty("oauth.consumerSecret"), prop.getProperty("oauth.accessToken"), prop.getProperty("oauth.accessTokenSecret"));
 
         } catch (InterruptedException e) {
-            logger.error(e.toString());
+            Logger.error(SampleStream.class, e.toString());
         } catch (IOException e) {
-            logger.error(e.toString());
+            Logger.error(SampleStream.class, e.toString());
         }
     }
 }
