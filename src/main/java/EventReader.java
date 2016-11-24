@@ -3,12 +3,17 @@ import eventstore.Event;
 import eventstore.SubscriptionObserver;
 import eventstore.j.EsConnection;
 import eventstore.j.EsConnectionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class eventReader {
+public class EventReader {
+
+    private static final Logger logger = LoggerFactory.getLogger(EventReader.class);
+
 	private static Map<String, Integer> hashtagCount;
 	private static int tweetCount;
 
@@ -22,15 +27,15 @@ public class eventReader {
 		for(final StateInfo state : statesInfo){
 			connection.subscribeToStream(state.getAbrv(), new SubscriptionObserver<Event>() {
 				public void onLiveProcessingStart(Closeable subscription) {
-					system.log().info("live processing started");
+					logger.info("live processing started");
 				}
 
 				public void onError(Throwable e) {
-					system.log().error(e.toString());
+					logger.error(e.toString());
 				}
 
 				public void onClose() {
-					system.log().error("subscription closed");
+					logger.error("subscription closed");
 				}
 
 				public void onEvent(Event event, Closeable arg1) {
@@ -51,14 +56,14 @@ public class eventReader {
 							}else{
 								hashtagCount.put(hashtag, count);
 							}
-							state.addHashtag(hashtag, count);							
-							system.log().info(state.getAbrv() + " " + hashtag + " " + state.getStateHash().get(hashtag));
-							system.log().info( hashtag + " " + hashtagCount.get(hashtag));							
+							state.addHashtag(hashtag, count);
+                            logger.info(state.getAbrv() + " " + hashtag + " " + state.getStateHash().get(hashtag));
+							logger.info( hashtag + " " + hashtagCount.get(hashtag));
 						}	
-						system.log().info("tweet count " + tweetCount);
+						logger.info("tweet count " + tweetCount);
 					}	
 					state.addTweet(stateTweet);	
-					system.log().info("tweet count for state : " + state.getAbrv() + " - " + state.getTweets());
+					logger.info("tweet count for state : " + state.getAbrv() + " - " + state.getTweets());
 				}											
 			}, false, null);
 		}

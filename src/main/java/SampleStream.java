@@ -21,6 +21,7 @@ import eventstore.proto.EventStoreMessages;
 import eventstore.tcp.ConnectionActor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -33,26 +34,22 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class SampleStream {
 
-    private final Logger slf4jLogger = LoggerFactory.getLogger(SampleStream.class);
+    private static final Logger logger = LoggerFactory.getLogger(SampleStream.class);
 
     public void run(String consumerKey, String consumerSecret, String token, String secret) throws InterruptedException, IOException {
 
         BlockingQueue<String> queue = new LinkedBlockingQueue<String>(1000);
 
         StatusesFilterEndpoint endpoint = new StatusesFilterEndpoint();
-        // end point for filter
         //endpoint.trackTerms(Lists.newArrayList("#WednesdayWisdom"));
         //endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-122.75, 36.8), new Location.Coordinate(-121.75, 37.8))));
-        endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-121.113,27.817), new Location.Coordinate(-63.544,46.843))));
+        endpoint.locations(Lists.newArrayList(new Location(new Location.Coordinate(-121.113, 27.817), new Location.Coordinate(-63.544, 46.843))));
 
         Authentication auth = new OAuth1(consumerKey, consumerSecret, token, secret);
-        // Authentication using username and password
         //Authentication auth = new com.twitter.hbc.httpclient.auth.BasicAuth(username, password);
 
         BasicClient client = new ClientBuilder()
-                //Srinivas's App
                 .name("sampleExampleClient")
-                //Satya's App
                 //.name("python-twitter-test-adb-grp6")
                 .hosts(Constants.STREAM_HOST)
                 .endpoint(endpoint)
@@ -62,7 +59,7 @@ public class SampleStream {
 
         client.connect();
 
-        slf4jLogger.info("msgQueue length" + queue.size());
+        logger.info("msgQueue length" + queue.size());
 
         final Settings settings = new SettingsBuilder().address(
                 new InetSocketAddress("127.0.0.1", 1113))
@@ -74,20 +71,20 @@ public class SampleStream {
         ActorRef writeResult = system.actorOf(Props.create(WriteResult.class));
 
 
-        List<EventData> events =  new ArrayList<EventData>();
-        int count = 0 ;
+        List<EventData> events = new ArrayList<EventData>();
+        int count = 0;
 
-        NLP.init();
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        //NLP.init();
+        //Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
         while (!client.isDone() && count < 50) {
-            for (int msgRead = 0; msgRead < 10 ; msgRead++) {
+            for (int msgRead = 0; msgRead < 10; msgRead++) {
                 String msg = queue.take();
-                count ++;
-                slf4jLogger.info("Tweet" + msgRead + " --> " + msg);
+                count++;
+                logger.info("Tweet" + msgRead + " --> " + msg);
 
-                JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
-              //  String sentimentText = jsonObject.get("text").toString();
+                //JsonObject jsonObject = gson.fromJson( msg, JsonObject.class);
+                //  String sentimentText = jsonObject.get("text").toString();
 
 //                0 - very Negative
 //                1 - Negative
@@ -95,36 +92,36 @@ public class SampleStream {
 //                3 - positive
 //                4 - veryPositive
 
-             //   slf4jLogger.info("Tweet" + msgRead + " --> " + NLP.findSentiment(sentimentText));
+                //   slf4jLogger.info("Tweet" + msgRead + " --> " + NLP.findSentiment(sentimentText));
 
                 events.add(new EventDataBuilder("sampleEvent").eventId(UUID.randomUUID()).jsonData(msg.trim()).build());
             }
             WriteEvents writeEvents = new WriteEventsBuilder("TweetStream11").addEvents(events).expectAnyVersion().build();
-            if(writeResult.isTerminated()){
-            	writeResult = system.actorOf(Props.create(WriteResult.class));
+            if (writeResult.isTerminated()) {
+                writeResult = system.actorOf(Props.create(WriteResult.class));
             }
-            
+
             connection.tell(writeEvents, writeResult);
             events.clear();
         }
         client.stop();
         system.terminate();
 
-        slf4jLogger.info("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
+        logger.info("The client read %d messages!\n", client.getStatsTracker().getNumMessages());
     }
 
     public static class WriteResult extends UntypedActor {
 
-        final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
+        final LoggingAdapter esLogger = Logging.getLogger(getContext().system(), this);
 
         public void onReceive(Object message) throws Exception {
             if (message instanceof EventStoreMessages.WriteEventsCompleted) {
                 final WriteEventsCompleted completed = (WriteEventsCompleted) message;
-                log.info("range: {}, position: {}", completed.numbersRange(), completed.position());
+                esLogger.info("range: {}, position: {}", completed.numbersRange(), completed.position());
             } else if (message instanceof Status.Failure) {
                 final Status.Failure failure = ((Status.Failure) message);
                 final EsException exception = (EsException) failure.cause();
-                log.error(exception, exception.toString());
+                esLogger.error(exception, exception.toString());
             } else
                 unhandled(message);
         }
@@ -139,8 +136,8 @@ public class SampleStream {
             String filename = "twitter.properties";
 
             input = SampleStream.class.getClassLoader().getResourceAsStream(filename);
-            if(input == null){
-                System.out.println("unable to find " + filename);
+            if (input == null) {
+                logger.info("unable to find " + filename);
                 return;
             }
             prop.load(input);
@@ -148,10 +145,9 @@ public class SampleStream {
             sampleStream.run(prop.getProperty("oauth.consumerKey"), prop.getProperty("oauth.consumerSecret"), prop.getProperty("oauth.accessToken"), prop.getProperty("oauth.accessTokenSecret"));
 
         } catch (InterruptedException e) {
-            System.out.println(e);
-        }
-        catch (IOException e) {
-            System.out.println(e);
+            logger.error(e.toString());
+        } catch (IOException e) {
+            logger.error(e.toString());
         }
     }
 }
